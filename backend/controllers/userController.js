@@ -1,8 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { database } = require("../models/modelExport");
-const Op = database.Sequelize.Op;
-const users = database.users;
+const db = require("../models");
 var saltRouds = 10;
 const { v4: uuidv4 } = require("uuid");
 require("dotenv/config");
@@ -10,35 +8,42 @@ require("dotenv/config");
 const userRegister = async (req, res, next) => {
   try {
     let newUser = req.body;
-    await users
-      .findOne({ where: { [Op.and]: [newUser.userId] } })
-      .then(async (profile) => {
+
+    await db.User.findOne({ where: { username: newUser.username } }).then(
+      async (profile) => {
+        console.log("aaaa4444");
         if (!profile) {
+          console.log("aaaa00000");
           bcrypt.hash(newUser.password, saltRouds, async (err, hash) => {
             if (err) {
-              console.error(err.message);
-              res.send({
+              console.log(12, "aaaaaaa");
+              console.log(err.message);
+              res.status(400).json({
                 message: err.message,
               });
             } else {
+              console.log("aaaa245532");
               newUser.userId = uuidv4();
               newUser.password = hash;
-              await users
-                .create(newUser)
+              await db.User.create(newUser)
                 .then(() => {
                   res.status(200).send("User Registered");
                 })
                 .catch(err);
               {
-                console.error("Signup Error");
+                console.log("aaaa4444");
+                console.log("Signup Error");
               }
             }
           });
         } else {
+          console.log("aaaa3333");
           res.status(401).send("User already Registered");
         }
-      });
+      }
+    );
   } catch (error) {
+    console.log("aaaa2222");
     res.send({
       message: error.message,
     });
@@ -48,7 +53,7 @@ const userRegister = async (req, res, next) => {
 const userLogin = async (req, res, next) => {
   const newUser = req.body;
   try {
-    const detectedUser = await users.findOne({
+    const detectedUser = await db.User.findOne({
       where: { username: newUser.username },
     });
     if (!detectedUser) {
@@ -99,7 +104,50 @@ const userLogin = async (req, res, next) => {
   }
 };
 
+const addAddress = async (req, res, next) => {
+  try {
+    
+    const { pincode, state, addressLine1, addressLine2, UserUserId } = req.body;
+    
+    await db.Address.create({
+      pincode: pincode,
+      addressLine1: addressLine1,
+      addressLine2: addressLine2,
+      state: state,
+      UserUserId: UserUserId,
+    }).then((address) => {
+      res.status(200).json({
+        address: address,
+      });
+    });
+  } catch (error) {
+    res.status(401).json({
+      message: error,
+    });
+  }
+};
+
+const getUserProfile = async (req, res) => {
+  try {
+    await db.User.findAll({
+      where: { userId: req.params.userId },
+      include: [db.Address],
+    }).then((profile) => {
+      res.status(200).json({
+        profile: profile,
+      });
+    });
+  } catch (error) {
+    console.log;
+    res.status(401).json({
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   userRegister,
   userLogin,
+  addAddress,
+  getUserProfile,
 };
